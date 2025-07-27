@@ -178,6 +178,7 @@ class MonteCarloGame:
         if len(remaining_cards) == 0 and len(self.deck) == 0:
             self.win = True
             self.game_over = True
+            pyxel.play(0, 4)
             return
         
         # 場にカードがない場合（山札から補充されるはず）
