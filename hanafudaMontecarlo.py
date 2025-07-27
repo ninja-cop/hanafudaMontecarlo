@@ -2,29 +2,40 @@ import pyxel
 import random
 
 class Card:
-    def __init__(self, suit, rank):
-        self.suit = suit  # 0:♠, 1:♥, 2:♦, 3:♣
-        self.rank = rank  # 1-13 (A,2-10,J,Q,K)
+    def __init__(self, month, rank):
+        self.month = month  # 1-12 (1月-12月)
+        self.rank = rank    # 1-4 (各月の1-4枚目)
         self.face_up = False
     
     def get_display_rank(self):
-        if self.rank == 1:
-            return "A"
-        elif self.rank == 11:
-            return "J"
-        elif self.rank == 12:
-            return "Q"
-        elif self.rank == 13:
-            return "K"
+        return str(self.rank)
+    
+    def get_month_name(self):
+        month_names = ["", "1月", "2月", "3月", "4月", "5月", "6月", 
+                      "7月", "8月", "9月", "10月", "11月", "12月"]
+        return month_names[self.month]
+    
+    def get_image_coords(self):
+        # 花札の画像座標を計算
+        if self.month <= 6:
+            # イメージバンク0 (1-6月)
+            bank = 0
+            month_in_bank = self.month
         else:
-            return str(self.rank)
-    
-    def get_suit_symbol(self):
-        symbols = ["♠", "♥", "♦", "♣"]
-        return symbols[self.suit]
-    
-    def get_color(self):
-        return 8 if self.suit in [1, 2] else 0  # 赤 or 黒
+            # イメージバンク1 (7-12月)
+            bank = 1
+            month_in_bank = self.month - 6
+        
+        # 座標計算：奇数月は左側(x=0,64), 偶数月は右側(x=128,192)
+        if month_in_bank % 2 == 1:  # 奇数月 (1,3,5月 または 7,9,11月)
+            base_x = (self.rank - 1) * 32  # 0, 32, 64, 96
+        else:  # 偶数月 (2,4,6月 または 8,10,12月)
+            base_x = 128 + (self.rank - 1) * 32  # 128, 160, 192, 224
+        
+        # Y座標：月ペアごとに53px間隔
+        y = ((month_in_bank - 1) // 2) * 53  # 1,2月→0, 3,4月→53, 5,6月→106
+        
+        return bank, base_x, y
 
 class MonteCarloGame:
     def __init__(self):
@@ -42,16 +53,16 @@ class MonteCarloGame:
         self.grid_cols = 5
         self.grid_rows = 5
         self.start_x = 8
-        self.start_y = 40
+        self.start_y = 20
         
         self.init_game()
     
     def init_game(self):
-        # デッキを作成
+        # 花札デッキを作成（48枚：12か月×4枚）
         deck = []
-        for suit in range(4):
-            for rank in range(1, 14):
-                deck.append(Card(suit, rank))
+        for month in range(1, 13):  # 1月-12月
+            for rank in range(1, 5):  # 各月4枚
+                deck.append(Card(month, rank))
         
         random.shuffle(deck)
         
@@ -106,11 +117,10 @@ class MonteCarloGame:
         if not self.are_adjacent(pos1, pos2):
             return False
         
-        # 同じランクまたは合計が11になる場合
-        if card1.rank == card2.rank:
+        # 同じ月のカード同士なら取れる
+        if card1.month == card2.month:
             return True
-        if card1.rank + card2.rank == 11:
-            return True
+        
         return False
     
     def remove_selected_cards(self):
@@ -217,26 +227,36 @@ class MonteCarloGame:
                             self.selected_cards = []
     
     def draw_card(self, card, x, y, selected=False):
-        # カード背景
-        color = 7 if not selected else 10
-        pyxel.rect(x, y, self.card_width, self.card_height, color)
-        pyxel.rectb(x, y, self.card_width, self.card_height, 0)
-        
         if card and card.face_up:
-            # ランク表示
-            rank_str = card.get_display_rank()
-            text_color = card.get_color()
-            pyxel.text(x + 2, y + 2, rank_str, text_color)
+            # 花札画像の描画
+            bank, img_x, img_y = card.get_image_coords()
             
-            # スート表示（簡易版）
-            suit_symbols = ["S", "H", "D", "C"]
-            pyxel.text(x + 2, y + 16, suit_symbols[card.suit], text_color)
+            # デバッグ情報を表示
+            #pyxel.text(x, y-10, f"{card.month}-{card.rank}", 7)
+            
+            # 花札画像を描画（透明色指定なし）
+            try:
+                pyxel.blt(x, y, bank, img_x, img_y, 32, 53, None, None, 0.64)
+            except:
+                # 画像読み込みエラーの場合、代替表示
+                pyxel.rect(x, y, 32, 53, 8)
+                pyxel.text(x+10, y+20, f"{card.month}", 0)
+                pyxel.text(x+10, y+30, f"{card.rank}", 0)
+            
+            # 選択時のハイライト枠
+            if selected:
+                pyxel.rectb(x-1, y-1, 32+2, 53+2, 10)
+                pyxel.rectb(x-2, y-2, 32+4, 53+4, 10)
+        else:
+            # 空のスペースまたは裏向きカード
+            pyxel.rect(x, y, self.card_width, self.card_height, 5)
+            pyxel.rectb(x, y, self.card_width, self.card_height, 0)
     
     def draw(self):
         pyxel.cls(15)  # 白背景
         
         # タイトル
-        pyxel.text(8, 8, "Monte Carlo", 0)
+        pyxel.text(8, 8, "Hanafuda Monte Carlo", 0)
         pyxel.text(8, 18, f"Score: {self.score}", 0)
         
         # 山札の枚数表示
@@ -244,9 +264,15 @@ class MonteCarloGame:
         
         # 山札の描画（右上）
         if len(self.deck) > 0:
+            # 山札は裏面として固定画像または単色で表示
             pyxel.rect(130, 20, 20, 25, 1)
             pyxel.rectb(130, 20, 20, 25, 0)
             pyxel.text(137, 30, "?", 7)
+            
+            # デバッグ：山札の先頭カード情報
+            if len(self.deck) > 0:
+                top_card = self.deck[-1]
+                #pyxel.text(105, 50, f"Next:{top_card.month}-{top_card.rank}", 7)
         
         # カード描画
         for row in range(self.grid_rows):
@@ -280,12 +306,13 @@ class MonteCarloGame:
         # 操作説明
         if not self.game_over:
             pyxel.text(8, 230, "Adjacent cards only", 0)
-            pyxel.text(8, 240, "Same rank or sum=11", 0)
+            pyxel.text(8, 240, "Same month pairs", 0)
             pyxel.text(8, 250, "Click OK to compact", 0)
 
 def main():
     game = MonteCarloGame()
-    pyxel.init(160, 256, title="Monte Carlo")
+    pyxel.init(160, 256, title="Hanafuda Monte Carlo")
+    pyxel.load("my_resource.pyxres")  # 花札リソースを読み込み
     pyxel.mouse(True)
     pyxel.run(game.update, game.draw)
 
