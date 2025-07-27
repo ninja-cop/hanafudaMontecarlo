@@ -196,7 +196,7 @@ class MonteCarloGame:
     
     def update(self):
         if self.game_over:
-            if pyxel.btnp(pyxel.KEY_R):
+            if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
                 self.init_game()
             return
         
@@ -245,8 +245,8 @@ class MonteCarloGame:
             
             # 選択時のハイライト枠
             if selected:
-                pyxel.rectb(x-1, y-1, 32+2, 53+2, 10)
-                pyxel.rectb(x-2, y-2, 32+4, 53+4, 10)
+                pyxel.rectb(x+4, y+8, 20+4, 34+3, 8)
+                pyxel.rectb(x+4, y+8, 20+4, 34+3, 8)
         else:
             # 空のスペースまたは裏向きカード
             pyxel.rect(x, y, self.card_width, self.card_height, 5)
@@ -260,14 +260,14 @@ class MonteCarloGame:
         pyxel.text(8, 18, f"Score: {self.score}", 0)
         
         # 山札の枚数表示
-        pyxel.text(110, 8, f"Deck: {len(self.deck)}", 0)
+        pyxel.text(118, 235, f"Deck: {len(self.deck)}", 0)
         
         # 山札の描画（右上）
         if len(self.deck) > 0:
             # 山札は裏面として固定画像または単色で表示
-            pyxel.rect(130, 20, 20, 25, 1)
-            pyxel.rectb(130, 20, 20, 25, 0)
-            pyxel.text(137, 30, "?", 7)
+            pyxel.rect(130, 205, 20, 25, 1)
+            pyxel.rectb(130, 205, 20, 25, 0)
+            pyxel.text(137, 213, "?", 7)
             
             # デバッグ：山札の先頭カード情報
             if len(self.deck) > 0:
@@ -295,13 +295,13 @@ class MonteCarloGame:
                 pyxel.text(55, 125, "No moves!", 8)
             
             pyxel.text(35, 140, f"Final Score: {self.score}", 7)
-            pyxel.text(40, 155, "Press R to restart", 7)
+            pyxel.text(40, 155, "Click to restart", 7)
         
         # OKボタン描画
         if not self.game_over:
-            pyxel.rect(60, 200, 40, 20, 11)
-            pyxel.rectb(60, 200, 40, 20, 0)
-            pyxel.text(73, 208, "OK", 0)
+            pyxel.rect(60, 205, 40, 20, 11)
+            pyxel.rectb(60, 205, 40, 20, 0)
+            pyxel.text(76, 213, "OK", 0)
         
         # 操作説明
         if not self.game_over:
