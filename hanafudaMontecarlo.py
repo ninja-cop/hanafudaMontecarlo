@@ -193,6 +193,7 @@ class MonteCarloGame:
         
         # ペアが作れない場合はゲームオーバー
         self.game_over = True
+        pyxel.play(0, 0)
     
     def update(self):
         if self.game_over:
