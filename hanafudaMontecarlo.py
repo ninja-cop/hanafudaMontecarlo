@@ -42,10 +42,12 @@ class MonteCarloGame:
         self.cards = []
         self.deck = []  # 山札
         self.selected_cards = []
-        self.score = 0
+        self.start_time = 0
+        self.end_time = 0
         self.game_over = False
         self.win = False
         self.selected_pos = None
+        self.game_state = "title"  # "title", "playing"
         
         # カード配置の設定
         self.card_width = 26
@@ -54,8 +56,6 @@ class MonteCarloGame:
         self.grid_rows = 5
         self.start_x = 8
         self.start_y = 20
-        
-        self.init_game()
     
     def init_game(self):
         # 花札デッキを作成（48枚：12か月×4枚）
@@ -83,9 +83,11 @@ class MonteCarloGame:
         self.deck = deck
         
         self.selected_cards = []
-        self.score = 0
+        self.start_time = pyxel.frame_count
+        self.end_time = 0
         self.game_over = False
         self.win = False
+        self.game_state = "playing"
     
     def get_card_pos(self, row, col):
         x = self.start_x + col * (self.card_width + 2)
@@ -135,8 +137,7 @@ class MonteCarloGame:
             if self.can_remove_pair(card1, card2, pos1, pos2):
                 self.cards[row1][col1] = None
                 self.cards[row2][col2] = None
-                self.score += 10
-                # カードは削除のみ、詰めは行わない
+                # スコア制廃止、カードは削除のみ
                 return True
         return False
     
@@ -178,6 +179,7 @@ class MonteCarloGame:
         if len(remaining_cards) == 0 and len(self.deck) == 0:
             self.win = True
             self.game_over = True
+            self.end_time = pyxel.frame_count  # 終了時間を記録
             pyxel.play(0, 4)
             return
         
@@ -194,9 +196,30 @@ class MonteCarloGame:
         
         # ペアが作れない場合はゲームオーバー
         self.game_over = True
+        self.end_time = pyxel.frame_count  # 終了時間を記録
         pyxel.play(0, 0)
     
+    def get_elapsed_time(self):
+        if self.game_over:
+            elapsed_frames = self.end_time - self.start_time
+        else:
+            elapsed_frames = pyxel.frame_count - self.start_time
+        
+        # フレーム数を秒に変換（60FPS想定）
+        elapsed_seconds = elapsed_frames // 60
+        minutes = elapsed_seconds // 60
+        seconds = elapsed_seconds % 60
+        
+        return "{:02d}:{:02d}".format(minutes, seconds)
+    
     def update(self):
+        if self.game_state == "title":
+            # タイトル画面での入力処理
+            if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT) or pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.KEY_RETURN):
+                self.init_game()
+            return
+        
+        # ゲーム中の処理
         if self.game_over:
             if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
                 self.init_game()
@@ -234,7 +257,7 @@ class MonteCarloGame:
             bank, img_x, img_y = card.get_image_coords()
             
             # デバッグ情報を表示
-            #pyxel.text(x, y-10, f"{card.month}-{card.rank}", 7)
+            #pyxel.text(x, y-10, str(card.month) + "-" + str(card.rank), 7)
             
             # 花札画像を描画（透明色指定なし）
             try:
@@ -242,8 +265,8 @@ class MonteCarloGame:
             except:
                 # 画像読み込みエラーの場合、代替表示
                 pyxel.rect(x, y, 32, 53, 8)
-                pyxel.text(x+10, y+20, f"{card.month}", 0)
-                pyxel.text(x+10, y+30, f"{card.rank}", 0)
+                pyxel.text(x+10, y+20, str(card.month), 0)
+                pyxel.text(x+10, y+30, str(card.rank), 0)
             
             # 選択時のハイライト枠
             if selected:
@@ -254,15 +277,59 @@ class MonteCarloGame:
             pyxel.rect(x, y, self.card_width, self.card_height, 5)
             pyxel.rectb(x, y, self.card_width, self.card_height, 0)
     
+    def draw_title_screen(self):
+        pyxel.cls(3)  # 濃い青の背景
+        
+        # メインタイトル
+        pyxel.text(30, 60, "HANAFUDA", 7)
+        pyxel.text(25, 75, "MONTE CARLO", 7)
+        
+        # 装飾的な花札カードを表示（サンプル）
+        # 1月の1枚目を左上に
+        try:
+            pyxel.blt(20, 100, 0, 0, 0, 32, 53)
+        except:
+            pass
+        
+        # 6月の1枚目を右上に
+        try:
+            pyxel.blt(110, 100, 0, 128, 106, 32, 53)
+        except:
+            pass
+        
+        # ゲーム説明
+        pyxel.text(25, 170, "Match same month", 7)
+        pyxel.text(30, 180, "adjacent cards", 7)
+        
+        # スタート指示
+        pyxel.text(20, 210, "Click or Press SPACE", 10)
+        pyxel.text(35, 220, "to start game", 10)
+        
+        # 点滅効果
+        if pyxel.frame_count % 50 < 30:
+            pyxel.text(50, 240, "START", 7)
+
+        # クレジット表示
+        pyxel.text(100, 237, "(V)1.6", 7)
+        pyxel.text(100, 245, "(C)2025 Saizo", 7)
+    
     def draw(self):
+        if self.game_state == "title":
+            self.draw_title_screen()
+            return
+        
+        # ゲーム画面の描画
         pyxel.cls(15)  # 白背景
         
         # タイトル
         pyxel.text(8, 8, "Hanafuda Monte Carlo", 0)
-        pyxel.text(8, 18, f"Score: {self.score}", 0)
+        
+        # 経過時間表示
+        time_str = self.get_elapsed_time()
+        pyxel.text(8, 18, "TIME: " + time_str, 0)
         
         # 山札の枚数表示
-        pyxel.text(118, 235, f"Deck: {len(self.deck)}", 0)
+        pyxel.text(120, 234, "Deck: " + str(len(self.deck)), 0)
         
         # 山札の描画（右上）
         if len(self.deck) > 0:
@@ -274,7 +341,7 @@ class MonteCarloGame:
             # デバッグ：山札の先頭カード情報
             if len(self.deck) > 0:
                 top_card = self.deck[-1]
-                #pyxel.text(105, 50, f"Next:{top_card.month}-{top_card.rank}", 7)
+                #pyxel.text(105, 50, "Next:" + str(top_card.month) + "-" + str(top_card.rank), 7)
         
         # カード描画
         for row in range(self.grid_rows):
@@ -292,11 +359,14 @@ class MonteCarloGame:
             
             if self.win:
                 pyxel.text(60, 115, "YOU WIN!", 10)
+                final_time = self.get_elapsed_time()
+                pyxel.text(45, 125, "Time: " + final_time, 7)
             else:
                 pyxel.text(50, 115, "GAME OVER", 8)
                 pyxel.text(55, 125, "No moves!", 8)
+                final_time = self.get_elapsed_time()
+                pyxel.text(45, 135, "Time: " + final_time, 7)
             
-            pyxel.text(35, 140, f"Final Score: {self.score}", 7)
             pyxel.text(40, 155, "Click to restart", 7)
         
         # OKボタン描画
@@ -307,9 +377,9 @@ class MonteCarloGame:
         
         # 操作説明
         if not self.game_over:
-            pyxel.text(8, 230, "Adjacent cards only", 0)
-            pyxel.text(8, 240, "Same month pairs", 0)
-            pyxel.text(8, 250, "Click OK to compact", 0)
+            pyxel.text(8, 229, "Adjacent cards only", 0)
+            pyxel.text(8, 239, "Same month pairs", 0)
+            pyxel.text(8, 249, "Click OK to compact", 0)
 
 def main():
     game = MonteCarloGame()
