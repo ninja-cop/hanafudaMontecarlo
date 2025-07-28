@@ -278,7 +278,7 @@ class MonteCarloGame:
             pyxel.rectb(x, y, self.card_width, self.card_height, 0)
     
     def draw_title_screen(self):
-        pyxel.cls(3)  # 濃い青の背景
+        pyxel.cls(5)  # 濃い青の背景
         
         # メインタイトル
         pyxel.text(30, 60, "HANAFUDA", 7)
