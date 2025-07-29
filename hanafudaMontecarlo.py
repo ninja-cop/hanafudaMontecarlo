@@ -137,7 +137,8 @@ class MonteCarloGame:
             if self.can_remove_pair(card1, card2, pos1, pos2):
                 self.cards[row1][col1] = None
                 self.cards[row2][col2] = None
-                # スコア制廃止、カードは削除のみ
+                # カード削除後、クリア判定のみ行う
+                self.check_win_condition()
                 return True
         return False
     
@@ -165,8 +166,23 @@ class MonteCarloGame:
                     self.cards[row][col] = all_cards[card_index]
                     card_index += 1
     
+    def check_win_condition(self):
+        # クリア判定のみ：場札と山札が全てなくなったかチェック
+        remaining_cards = []
+        for row in range(self.grid_rows):
+            for col in range(self.grid_cols):
+                if self.cards[row][col] is not None:
+                    remaining_cards.append(self.cards[row][col])
+        
+        # 全てのカードがなくなり、山札も空の場合は勝利
+        if len(remaining_cards) == 0 and len(self.deck) == 0:
+            self.win = True
+            self.game_over = True
+            self.end_time = pyxel.frame_count  # 終了時間を記録
+            pyxel.play(0, 4)
+    
     def check_game_over(self):
-        # 残りカードをチェック
+        # 手詰まり判定：残りカードでペアが作れるかチェック
         remaining_cards = []
         remaining_positions = []
         for row in range(self.grid_rows):
@@ -175,15 +191,7 @@ class MonteCarloGame:
                     remaining_cards.append(self.cards[row][col])
                     remaining_positions.append((row, col))
         
-        # 全てのカードがなくなり、山札も空の場合は勝利
-        if len(remaining_cards) == 0 and len(self.deck) == 0:
-            self.win = True
-            self.game_over = True
-            self.end_time = pyxel.frame_count  # 終了時間を記録
-            pyxel.play(0, 4)
-            return
-        
-        # 場にカードがない場合（山札から補充されるはず）
+        # 場にカードがない場合は何もしない
         if len(remaining_cards) == 0:
             return
         
@@ -310,7 +318,7 @@ class MonteCarloGame:
             pyxel.text(50, 240, "START", 7)
 
         # クレジット表示
-        pyxel.text(100, 237, "(V)1.6", 7)
+        pyxel.text(100, 237, "(V)1.7", 7)
         pyxel.text(100, 245, "(C)2025 Saizo", 7)
     
     def draw(self):
